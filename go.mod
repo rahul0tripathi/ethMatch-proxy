@@ -4,6 +4,8 @@ go 1.16
 
 require (
 	github.com/ethereum/go-ethereum v1.10.13 // indirect
+	github.com/go-chi/chi/v5 v5.0.7 // indirect
+	github.com/go-chi/render v1.0.1 // indirect
 	github.com/go-redis/redis/v8 v8.11.4 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/libp2p/go-libp2p v0.16.0 // indirect

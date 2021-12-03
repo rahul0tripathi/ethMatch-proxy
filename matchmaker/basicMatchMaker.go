@@ -39,6 +39,7 @@ func NewBasicMatchMaker(ticker time.Duration, minPlayers int, maxPlayers int) Ba
 }
 func (mm *BasicMatchMaker) StartMatchMaker() {
 	for now := range time.Tick(mm.MMTime) {
+		now := now
 		go func() {
 			err := mm.MMF(now)
 			if err != nil {
@@ -85,7 +86,7 @@ func (mm *BasicMatchMaker) MMF(timestamp time.Time) error {
 					PlayerTickets:     tmpTickets,
 					PlayerSignatures:  nil,
 					Ranks:             tmpRanks,
-					Pool:              tmpTicketGroup[0].EntryFee * float64(len(tmpTicketGroup)),
+					Pool:              tmpTicketGroup[0].EntryFee * uint64(len(tmpTicketGroup)),
 					OperatorsShare:    tmpTicketGroup[0].OperatorsShare,
 					EntryFee:          tmpTicketGroup[0].EntryFee,
 					Id:                lobbyId.String(),

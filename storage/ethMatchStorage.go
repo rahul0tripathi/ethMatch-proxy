@@ -27,9 +27,12 @@ const (
 	maxProposalFetchCount = 100
 )
 
-var redisAddress = flag.String("redisAddr", "localhost:6379", "address of redis server [IP]:[PORT]")
-var redisPassword = flag.String("redisPass", "", "redis server password")
-var redisDb = flag.Int("redisDb", 0, "redis database to use")
+var (
+	redisAddress  = flag.String("redisAddr", "localhost:6379", "address of redis server [IP]:[PORT]")
+	redisPassword = flag.String("redisPass", "", "redis server password")
+	redisDb       = flag.Int("redisDb", 0, "redis database to use")
+	CommonStorage = NewEthMatchStorage()
+)
 
 func genTicketKey(ticketId string) string {
 	return ticketPrefix + ":" + ticketId
@@ -150,7 +153,19 @@ func (em EthMatchStorage) GetUserLobbyProposals(ctx context.Context, user ethcom
 	}
 	return
 }
-
+func (em EthMatchStorage) GetProposal(ctx context.Context, lobbyId string) (lobby types.Lobby, err error) {
+	proposalCmd := em.redisClient.Get(ctx, genNewLobbyKey(lobbyId))
+	if err = proposalCmd.Err(); err != nil {
+		return
+	}
+	var data []byte
+	data, err = proposalCmd.Bytes()
+	if err != nil {
+		return
+	}
+	err = json.Unmarshal(data, &lobby)
+	return
+}
 func (em EthMatchStorage) NewProposal(ctx context.Context, lobby types.Lobby) error {
 	lobbyBytes, err := json.Marshal(lobby)
 	if err != nil {
@@ -166,7 +181,7 @@ func (em EthMatchStorage) NewProposal(ctx context.Context, lobby types.Lobby) er
 	return nil
 }
 func (em EthMatchStorage) AddSignature(ctx context.Context, lobby types.Lobby, user ethcommon.Address, signature ethcommon.Hash) (err error) {
-	err = em.redisClient.HSet(ctx, genLobbySignatureMap(lobby.Id), user.String(), signature).Err()
+	err = em.redisClient.HSet(ctx, genLobbySignatureMap(lobby.Id), user.String(), signature.String()).Err()
 	return
 }
 func (em EthMatchStorage) GetProposalSignatures(ctx context.Context, lobbyId string) (signatures types.LobbySignatures, err error) {

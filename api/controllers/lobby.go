@@ -61,19 +61,26 @@ func SignProposal(w http.ResponseWriter, r *http.Request) {
 				render.Status(r, http.StatusOK)
 				render.JSON(w, r, common.NewResponse(http.StatusForbidden, "failed to verify signature", struct{}{}))
 			} else {
-				err = storage.CommonStorage.AddSignature(r.Context(), proposal, player, ethcommon.HexToHash(body.Signature))
-				if err != nil {
-					render.Status(r, http.StatusInternalServerError)
-					render.JSON(w, r, common.NewResponse(http.StatusInternalServerError, err.Error(), struct{}{}))
+				var existingSig ethcommon.Hash
+				existingSig, err = storage.CommonStorage.GetSignature(r.Context(), proposal, player)
+				if existingSig == (ethcommon.Hash{}) {
+					err = storage.CommonStorage.AddSignature(r.Context(), proposal, player, ethcommon.HexToHash(body.Signature))
+					if err != nil {
+						render.Status(r, http.StatusInternalServerError)
+						render.JSON(w, r, common.NewResponse(http.StatusInternalServerError, err.Error(), struct{}{}))
+					} else {
+						render.Status(r, http.StatusOK)
+						render.JSON(w, r, common.NewResponse(http.StatusOK, "added signature to proposal waiting for others to sign", struct {
+							LobbyId   string    `json:"lobby_id"`
+							TimeStamp time.Time `json:"timestamp"`
+						}{
+							LobbyId:   proposal.Id,
+							TimeStamp: time.Now(),
+						}))
+					}
 				} else {
 					render.Status(r, http.StatusOK)
-					render.JSON(w, r, common.NewResponse(http.StatusOK, "added signature to proposal waiting for others to sign", struct {
-						LobbyId   string    `json:"lobby_id"`
-						TimeStamp time.Time `json:"timestamp"`
-					}{
-						LobbyId:   proposal.Id,
-						TimeStamp: time.Now(),
-					}))
+					render.JSON(w, r, common.NewResponse(http.StatusInternalServerError, "signature already exists", struct{}{}))
 				}
 			}
 		}

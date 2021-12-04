@@ -184,6 +184,13 @@ func (em EthMatchStorage) AddSignature(ctx context.Context, lobby types.Lobby, u
 	err = em.redisClient.HSet(ctx, genLobbySignatureMap(lobby.Id), user.String(), signature.String()).Err()
 	return
 }
+func (em EthMatchStorage) GetSignature(ctx context.Context, lobby types.Lobby, user ethcommon.Address) (addr ethcommon.Hash, err error) {
+	respCmd := em.redisClient.HGet(ctx, genLobbySignatureMap(lobby.Id), user.String())
+	if err = respCmd.Err(); err == nil {
+		addr = ethcommon.HexToHash(respCmd.Val())
+	}
+	return
+}
 func (em EthMatchStorage) GetProposalSignatures(ctx context.Context, lobbyId string) (signatures types.LobbySignatures, err error) {
 	signaturesCmd := em.redisClient.HGetAll(ctx, genLobbySignatureMap(lobbyId))
 	if err = signaturesCmd.Err(); err != nil {

@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"encoding/json"
-	"fmt"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"go.uber.org/zap"
 	"time"
@@ -24,8 +23,6 @@ type (
 
 func getProposalHash(proposal types.Lobby, player ethcommon.Address) (hash []byte) {
 	var err error
-	fmt.Println(player)
-	fmt.Println(proposal.PlayerTickets[player].String())
 	hash, err = common.NewSignedDataV4(proposal.PlayerTickets[player].String(), proposal)
 	if err != nil {
 		common.Logger.Error("Failed to generate signed data", zap.Error(err))
@@ -52,16 +49,13 @@ func SignProposal(w http.ResponseWriter, r *http.Request) {
 			render.Status(r, http.StatusOK)
 			render.JSON(w, r, common.NewResponse(http.StatusBadRequest, "invalid payload", struct{}{}))
 		}
-		fmt.Println(body.LobbyId)
 		proposal, err := storage.CommonStorage.GetProposal(r.Context(), body.LobbyId)
-		fmt.Println(proposal, err)
 		if err != nil {
 			render.Status(r, http.StatusInternalServerError)
 			render.JSON(w, r, common.NewResponse(http.StatusInternalServerError, "failed to fetch proposal", struct{}{}))
 		}
 		if proposal.Id != "" {
 			h := getProposalHash(proposal, player)
-			fmt.Println(h)
 			verified := common.VerifySig(player, body.Signature, h)
 			if !verified {
 				render.Status(r, http.StatusOK)

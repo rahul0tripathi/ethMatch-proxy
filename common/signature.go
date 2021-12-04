@@ -25,7 +25,6 @@ type SignedDataV4 struct {
 
 func VerifySig(signer ethcommon.Address, sigHex string, input []byte) (isSigner bool) {
 	sig, err := hexutil.Decode(sigHex)
-	fmt.Println(err)
 	if err != nil {
 		return false
 	}
@@ -35,12 +34,10 @@ func VerifySig(signer ethcommon.Address, sigHex string, input []byte) (isSigner 
 	sig[64] -= 27
 	var pubKey *ecdsa.PublicKey
 	pubKey, err = crypto.SigToPub(input, sig)
-	fmt.Println(err)
 	if err != nil {
 		return false
 	}
 	signerAddr := crypto.PubkeyToAddress(*pubKey)
-	fmt.Println(signerAddr)
 	return signerAddr == signer
 }
 func NewSignedDataV4(ticketId string, lobby types.Lobby) ([]byte, error) {

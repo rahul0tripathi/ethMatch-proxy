@@ -12,5 +12,6 @@ var (
 func init() {
 	TicketRouter.Route("/{"+controllers.PlayerAddr+"}", func(r chi.Router) {
 		r.Get("/", controllers.GetUserTickets)
+		r.Post("/", controllers.AddNewTicket)
 	})
 }

@@ -72,6 +72,9 @@ func (mm *BasicMatchMaker) MMF(timestamp time.Time) error {
 		max := mm.config["maxPlayers"].(int)
 		common.Logger.Debug("maxPlayers", zap.Int("count", max))
 		for {
+			if i > len(tickets) {
+				break
+			}
 			var tmpTicketGroup []types.Ticket
 			if i+max > len(tickets) {
 				tmpTicketGroup = tickets[i:]

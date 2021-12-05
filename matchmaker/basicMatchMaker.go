@@ -13,20 +13,28 @@ import (
 	"time"
 )
 
+var (
+	CommonMatchMaker *BasicMatchMaker
+)
+
 type BasicMatchMaker struct {
-	MMTime  time.Duration
-	io      sync.RWMutex
-	storage storage.Storage
-	stream  chan types.Lobby
-	config  map[string]interface{}
+	MMTime      time.Duration
+	io          sync.RWMutex
+	storage     storage.Storage
+	stream      chan types.Lobby
+	config      map[string]interface{}
+	NextRunTime time.Time
 }
 
 const (
-	proposalExpireTime = time.Minute * 3
+	proposalExpireTime = time.Hour * 3
 )
 
-func NewBasicMatchMaker(ticker time.Duration, minPlayers int, maxPlayers int) BasicMatchMaker {
-	return BasicMatchMaker{
+func init() {
+	CommonMatchMaker = NewBasicMatchMaker(time.Second*10, 1, 2)
+}
+func NewBasicMatchMaker(ticker time.Duration, minPlayers int, maxPlayers int) *BasicMatchMaker {
+	return &BasicMatchMaker{
 		MMTime:  ticker,
 		io:      sync.RWMutex{},
 		storage: storage.NewEthMatchStorage(),
@@ -39,6 +47,7 @@ func NewBasicMatchMaker(ticker time.Duration, minPlayers int, maxPlayers int) Ba
 }
 func (mm *BasicMatchMaker) StartMatchMaker() {
 	for now := range time.Tick(mm.MMTime) {
+		mm.NextRunTime = time.Now().Add(mm.MMTime)
 		now := now
 		go func() {
 			err := mm.MMF(now)

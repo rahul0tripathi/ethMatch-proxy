@@ -2,13 +2,13 @@ package controllers
 
 import (
 	"encoding/json"
+	"github.com/ethMatch/proxy/common"
+	"github.com/ethMatch/proxy/matchmaker"
+	"github.com/ethMatch/proxy/storage"
+	"github.com/ethMatch/proxy/types"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
-	"github.com/orgs/ethMatch/p2pmatch/common"
-	"github.com/orgs/ethMatch/p2pmatch/matchmaker"
-	"github.com/orgs/ethMatch/p2pmatch/storage"
-	"github.com/orgs/ethMatch/p2pmatch/types"
 	"net/http"
 	"time"
 )

@@ -2,11 +2,11 @@ package main
 
 import (
 	"context"
+	"github.com/ethMatch/proxy/api"
+	"github.com/ethMatch/proxy/common"
+	"github.com/ethMatch/proxy/matchmaker"
+	"github.com/ethMatch/proxy/storage"
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/orgs/ethMatch/p2pmatch/api"
-	"github.com/orgs/ethMatch/p2pmatch/common"
-	"github.com/orgs/ethMatch/p2pmatch/matchmaker"
-	"github.com/orgs/ethMatch/p2pmatch/storage"
 	"go.uber.org/zap"
 )
 

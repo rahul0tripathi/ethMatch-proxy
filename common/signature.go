@@ -3,12 +3,12 @@ package common
 import (
 	"crypto/ecdsa"
 	"fmt"
+	"github.com/ethMatch/proxy/types"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/signer/core"
-	"github.com/orgs/ethMatch/p2pmatch/types"
 	"go.uber.org/zap"
 )
 

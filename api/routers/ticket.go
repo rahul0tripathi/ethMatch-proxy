@@ -1,8 +1,8 @@
 package routers
 
 import (
+	"github.com/ethMatch/proxy/api/controllers"
 	"github.com/go-chi/chi/v5"
-	"github.com/orgs/ethMatch/p2pmatch/api/controllers"
 )
 
 var (

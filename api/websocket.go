@@ -2,10 +2,10 @@ package api
 
 import (
 	"fmt"
+	"github.com/ethMatch/proxy/common"
+	"github.com/ethMatch/proxy/types"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/websocket"
-	"github.com/orgs/ethMatch/p2pmatch/common"
-	"github.com/orgs/ethMatch/p2pmatch/types"
 	"go.uber.org/zap"
 	"log"
 	"net/http"

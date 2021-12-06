@@ -1,8 +1,8 @@
 package matchmaker
 
 import (
+	"github.com/ethMatch/proxy/types"
 	"github.com/google/uuid"
-	"github.com/orgs/ethMatch/p2pmatch/types"
 )
 
 type MatchMaker interface {

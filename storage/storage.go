@@ -2,9 +2,9 @@ package storage
 
 import (
 	"context"
+	"github.com/ethMatch/proxy/types"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
-	"github.com/orgs/ethMatch/p2pmatch/types"
 )
 
 type Storage interface {

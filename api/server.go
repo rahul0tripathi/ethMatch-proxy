@@ -1,10 +1,10 @@
 package api
 
 import (
+	"github.com/ethMatch/proxy/api/routers"
+	"github.com/ethMatch/proxy/common"
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/websocket"
-	"github.com/orgs/ethMatch/p2pmatch/api/routers"
-	"github.com/orgs/ethMatch/p2pmatch/common"
 	"go.uber.org/zap"
 	"net/http"
 	"sync"

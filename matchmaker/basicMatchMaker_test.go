@@ -1,9 +1,9 @@
 package matchmaker
 
 import (
+	"github.com/ethMatch/proxy/types"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
-	"github.com/orgs/ethMatch/p2pmatch/types"
 	"github.com/stretchr/testify/require"
 	"testing"
 	"time"

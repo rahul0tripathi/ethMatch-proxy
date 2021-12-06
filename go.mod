@@ -1,4 +1,4 @@
-module github.com/orgs/ethMatch/p2pmatch
+module github.com/ethMatch/proxy
 
 go 1.16
 
@@ -9,8 +9,6 @@ require (
 	github.com/go-redis/redis/v8 v8.11.4 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
-	github.com/libp2p/go-libp2p v0.16.0 // indirect
 	github.com/stretchr/testify v1.7.0 // indirect
-	go.opentelemetry.io/otel v0.20.0 // indirect
 	go.uber.org/zap v1.19.1 // indirect
 )

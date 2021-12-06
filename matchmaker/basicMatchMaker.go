@@ -2,12 +2,12 @@ package matchmaker
 
 import (
 	"context"
+	"github.com/ethMatch/proxy/common"
+	"github.com/ethMatch/proxy/storage"
+	"github.com/ethMatch/proxy/types"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/google/uuid"
-	"github.com/orgs/ethMatch/p2pmatch/common"
-	"github.com/orgs/ethMatch/p2pmatch/storage"
-	"github.com/orgs/ethMatch/p2pmatch/types"
 	"go.uber.org/zap"
 	"sync"
 	"time"

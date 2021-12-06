@@ -2,10 +2,11 @@ package main
 
 import (
 	"context"
+	"github.com/ethMatch/proxy/api"
+	"github.com/ethMatch/proxy/matchmaker"
+	"github.com/ethMatch/proxy/storage"
+	"github.com/ethMatch/proxy/types"
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/orgs/ethMatch/p2pmatch/matchmaker"
-	"github.com/orgs/ethMatch/p2pmatch/storage"
-	"github.com/orgs/ethMatch/p2pmatch/types"
 	"testing"
 	"time"
 )
@@ -16,7 +17,7 @@ func TestMatchMakingLoop(t *testing.T) {
 	t.Log("Adding sample ticket")
 	id, err := basicMatchMaker.AddTicketToQueue(types.Ticket{
 		OperatorAddress: ethcommon.Address{},
-		Player:          ethcommon.Address{},
+		Player:          ethcommon.HexToAddress(""),
 		EntryFee:        20,
 		OperatorsShare:  1,
 		Status:          0,
@@ -44,6 +45,12 @@ func TestMatchMakingLoop(t *testing.T) {
 			err := store.NewProposal(context.Background(), lobby)
 			if err != nil {
 				t.Error("failed store new proposal", err)
+			}
+			for player := range lobby.PlayerTickets {
+				err := api.Ws.Write(player, api.ProposalEvent{Propsal: lobby})
+				if err != nil {
+					t.Log(err, "failed to write lobby to socket")
+				}
 			}
 		}
 		t.Log("Getting user Proposals")

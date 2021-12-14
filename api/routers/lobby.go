@@ -13,5 +13,6 @@ func init() {
 	LobbyRouter.Route("/{"+controllers.PlayerAddr+"}", func(r chi.Router) {
 		r.Get("/proposals", controllers.GetUserLobbyProposals)
 		r.Post("/sign", controllers.SignProposal)
+		r.Get("/sessions", controllers.GetPlayerSessions)
 	})
 }

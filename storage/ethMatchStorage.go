@@ -5,33 +5,34 @@ import (
 	"encoding/json"
 	"flag"
 	"github.com/ethMatch/proxy/common"
+	"github.com/ethMatch/proxy/config"
 	"github.com/ethMatch/proxy/types"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
-	"strconv"
 	"strings"
 	"time"
 )
 
 const (
-	ticketPrefix          = "TICKET"
-	userPrefix            = "USER"
-	proposalPrefix        = "LOBBYPROPOSAL"
-	proposedLobbyPrefix   = "PROPOSEDLOBBY"
-	lobbySignatures       = "LOBBYSIGNATURES"
-	proposalExpireTime    = time.Minute * 3
+	ticketPrefix        = "TICKET"
+	userPrefix          = "USER"
+	proposalPrefix      = "LOBBYPROPOSAL"
+	proposedLobbyPrefix = "PROPOSEDLOBBY"
+	lobbySignatures     = "LOBBYSIGNATURES"
+
 	ticketPool            = "TICKET_POOL"
-	maxTicketTTL          = time.Hour
 	maxProposalFetchCount = 100
 )
 
 var (
-	redisAddress  = flag.String("redisAddr", "localhost:6379", "address of redis server [IP]:[PORT]")
-	redisPassword = flag.String("redisPass", "", "redis server password")
-	redisDb       = flag.Int("redisDb", 0, "redis database to use")
-	CommonStorage = NewEthMatchStorage()
+	proposalExpireTime time.Duration
+	maxTicketTTL       time.Duration
+	redisAddress       = flag.String("redisAddr", "localhost:6379", "address of redis server [IP]:[PORT]")
+	redisPassword      = flag.String("redisPass", "", "redis server password")
+	redisDb            = flag.Int("redisDb", 0, "redis database to use")
+	CommonStorage      = NewEthMatchStorage()
 )
 
 func genTicketKey(ticketId string) string {
@@ -66,9 +67,18 @@ type EthMatchStorage struct {
 }
 
 func NewEthMatchStorage() EthMatchStorage {
+	var err error
+	proposalExpireTime, err = time.ParseDuration(config.ENV.ProposalExpireDuration)
+	if err != nil {
+		zap.Error(err)
+	}
+	maxTicketTTL, err = time.ParseDuration(config.ENV.MaxTicketTTL)
+	if err != nil {
+		zap.Error(err)
+	}
 	client := redis.NewClient(&redis.Options{
-		Addr:     *redisAddress,
-		Password: *redisPassword,
+		Addr:     config.ENV.Redis.Address,
+		Password: config.ENV.Redis.Password,
 		DB:       *redisDb,
 	})
 	return EthMatchStorage{
@@ -90,7 +100,7 @@ func (em EthMatchStorage) AddTicket(ctx context.Context, ticket types.Ticket) (e
 		Score:  float64(ticket.Rank),
 		Member: ticket.Id.String(),
 	}).Err()
-	err = em.redisClient.HSet(ctx, genUserKey(ticket.Player), ticket.Id.String(), time.Now().Add(maxTicketTTL).Unix()).Err()
+	err = em.redisClient.Set(ctx, genUserKey(ticket.Player), ticket.Id.String(), maxTicketTTL).Err()
 	return
 }
 
@@ -113,25 +123,16 @@ func (em EthMatchStorage) GetTicketById(ctx context.Context, ticketId uuid.UUID)
 	err = json.Unmarshal(ticketJSON, &ticket)
 	return
 }
-func (em EthMatchStorage) GetUserTickets(ctx context.Context, user ethcommon.Address) (tickets []types.Ticket, err error) {
-	allTicketsCmd := em.redisClient.HGetAll(ctx, genUserKey(user))
-	if err = allTicketsCmd.Err(); err != nil {
+func (em EthMatchStorage) GetUserTickets(ctx context.Context, user ethcommon.Address) (ticket types.Ticket, err error) {
+	currentTicket := em.redisClient.Get(ctx, genUserKey(user))
+	err = currentTicket.Err()
+	if err != nil {
 		return
 	}
-	for ticketId, ttlStr := range allTicketsCmd.Val() {
-		ttl, _ := strconv.ParseInt(ttlStr, 10, 64)
-		if time.Now().Unix() < ttl {
-			ticket, _ := em.GetTicketById(ctx, uuid.MustParse(ticketId))
-			if (ticket.Player != ethcommon.Address{}) {
-				tickets = append(tickets, ticket)
-			}
-		} else {
-			_ = em.redisClient.HDel(ctx, ticketId)
-		}
-	}
+	ticket, err = em.GetTicketById(ctx, uuid.MustParse(currentTicket.String()))
 	return
 }
-func (em EthMatchStorage) GetUserLobbyProposals(ctx context.Context, user ethcommon.Address) (lobbies []types.Lobby, err error) {
+func (em EthMatchStorage) GetUserLobbyProposals(ctx context.Context, user ethcommon.Address) (lobbies []types.Proposal, err error) {
 	common.Logger.Debug("proposal string", zap.String("key", newProposalMatchString(user)))
 	scanCmd := em.redisClient.Scan(ctx, 0, newProposalMatchString(user), maxProposalFetchCount)
 	if err = scanCmd.Err(); err != nil {
@@ -143,7 +144,7 @@ func (em EthMatchStorage) GetUserLobbyProposals(ctx context.Context, user ethcom
 		if err = lobby.Err(); err != nil {
 			return
 		}
-		parsedLobby := types.Lobby{}
+		parsedLobby := types.Proposal{}
 		if err = json.Unmarshal([]byte(lobby.Val()), &parsedLobby); err != nil {
 			return
 		}
@@ -153,7 +154,7 @@ func (em EthMatchStorage) GetUserLobbyProposals(ctx context.Context, user ethcom
 	}
 	return
 }
-func (em EthMatchStorage) GetProposal(ctx context.Context, lobbyId string) (lobby types.Lobby, err error) {
+func (em EthMatchStorage) GetProposal(ctx context.Context, lobbyId string) (lobby types.Proposal, err error) {
 	proposalCmd := em.redisClient.Get(ctx, genNewLobbyKey(lobbyId))
 	if err = proposalCmd.Err(); err != nil {
 		return
@@ -166,7 +167,7 @@ func (em EthMatchStorage) GetProposal(ctx context.Context, lobbyId string) (lobb
 	err = json.Unmarshal(data, &lobby)
 	return
 }
-func (em EthMatchStorage) NewProposal(ctx context.Context, lobby types.Lobby) error {
+func (em EthMatchStorage) NewProposal(ctx context.Context, lobby types.Proposal) error {
 	lobbyBytes, err := json.Marshal(lobby)
 	if err != nil {
 		return err
@@ -180,24 +181,25 @@ func (em EthMatchStorage) NewProposal(ctx context.Context, lobby types.Lobby) er
 	}
 	return nil
 }
-func (em EthMatchStorage) AddSignature(ctx context.Context, lobby types.Lobby, user ethcommon.Address, signature ethcommon.Hash) (err error) {
-	err = em.redisClient.HSet(ctx, genLobbySignatureMap(lobby.Id), user.String(), signature.String()).Err()
+func (em EthMatchStorage) AddSignature(ctx context.Context, lobby types.Proposal, user ethcommon.Address, signature string) (err error) {
+	err = em.redisClient.HSet(ctx, genLobbySignatureMap(lobby.Id), user.String(), signature).Err()
 	return
 }
-func (em EthMatchStorage) GetSignature(ctx context.Context, lobby types.Lobby, user ethcommon.Address) (addr ethcommon.Hash, err error) {
+func (em EthMatchStorage) GetSignature(ctx context.Context, lobby types.Proposal, user ethcommon.Address) (addr string, err error) {
 	respCmd := em.redisClient.HGet(ctx, genLobbySignatureMap(lobby.Id), user.String())
 	if err = respCmd.Err(); err == nil {
-		addr = ethcommon.HexToHash(respCmd.Val())
+		addr = respCmd.Val()
 	}
 	return
 }
 func (em EthMatchStorage) GetProposalSignatures(ctx context.Context, lobbyId string) (signatures types.LobbySignatures, err error) {
 	signaturesCmd := em.redisClient.HGetAll(ctx, genLobbySignatureMap(lobbyId))
+	signatures = map[ethcommon.Address]string{}
 	if err = signaturesCmd.Err(); err != nil {
 		return
 	}
 	for addr, sig := range signaturesCmd.Val() {
-		signatures[ethcommon.HexToAddress(addr)] = ethcommon.HexToHash(sig)
+		signatures[ethcommon.HexToAddress(addr)] = sig
 	}
 	return
 }

@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"github.com/ethMatch/proxy/matchmaker"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"go.uber.org/zap"
 	"time"
@@ -19,9 +20,14 @@ type (
 		LobbyId   string `json:"lobby_id"`
 		Signature string `json:"signature"`
 	}
+	GameSessionRequest struct {
+		LobbyId   string            `json:"lobby_id"`
+		Signature string            `json:"signature"`
+		Player    ethcommon.Address `json:"player"`
+	}
 )
 
-func getProposalHash(proposal types.Lobby, player ethcommon.Address) (hash []byte) {
+func getProposalHash(proposal types.Proposal, player ethcommon.Address) (hash []byte) {
 	var err error
 	hash, err = common.NewSignedDataV4(proposal.PlayerTickets[player].String(), proposal)
 	if err != nil {
@@ -61,10 +67,10 @@ func SignProposal(w http.ResponseWriter, r *http.Request) {
 				render.Status(r, http.StatusOK)
 				render.JSON(w, r, common.NewResponse(http.StatusForbidden, "failed to verify signature", struct{}{}))
 			} else {
-				var existingSig ethcommon.Hash
+				var existingSig string
 				existingSig, err = storage.CommonStorage.GetSignature(r.Context(), proposal, player)
-				if existingSig == (ethcommon.Hash{}) {
-					err = storage.CommonStorage.AddSignature(r.Context(), proposal, player, ethcommon.HexToHash(body.Signature))
+				if existingSig == "" {
+					err = storage.CommonStorage.AddSignature(r.Context(), proposal, player, body.Signature)
 					if err != nil {
 						render.Status(r, http.StatusInternalServerError)
 						render.JSON(w, r, common.NewResponse(http.StatusInternalServerError, err.Error(), struct{}{}))
@@ -77,6 +83,7 @@ func SignProposal(w http.ResponseWriter, r *http.Request) {
 							LobbyId:   proposal.Id,
 							TimeStamp: time.Now(),
 						}))
+						matchmaker.CommonMatchMaker.PushLobbyToChain(proposal.Id)
 					}
 				} else {
 					render.Status(r, http.StatusOK)

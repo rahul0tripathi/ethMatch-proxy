@@ -1,0 +1,16 @@
+private_key: ""
+contract_address: ""
+eth_node: "ws://localhost:8545"
+name: ""
+db: ""
+mm_time: "20s"
+max_players: 2
+min_players: 2
+proposal_expire_duration: "3m"
+max_ticket_ttl: "40s"
+redis:
+  address: "localhost:6379"
+  password: ""
+pinata:
+  api_key: ""
+  api_sceret: ""

@@ -29,6 +29,7 @@ func RunHTTPServer() {
 	baseRouter := chi.NewRouter()
 	baseRouter.Mount("/ticket", routers.TicketRouter)
 	baseRouter.Mount("/lobby", routers.LobbyRouter)
+	baseRouter.Mount("/session", routers.SessionRouter)
 	baseRouter.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		WsUpgradeHandler(upgrader, &Ws, w, r)
 	})

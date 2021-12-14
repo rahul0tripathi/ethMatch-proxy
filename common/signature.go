@@ -3,6 +3,7 @@ package common
 import (
 	"crypto/ecdsa"
 	"fmt"
+	"github.com/ethMatch/proxy/config"
 	"github.com/ethMatch/proxy/types"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -40,21 +41,21 @@ func VerifySig(signer ethcommon.Address, sigHex string, input []byte) (isSigner 
 	signerAddr := crypto.PubkeyToAddress(*pubKey)
 	return signerAddr == signer
 }
-func NewSignedDataV4(ticketId string, lobby types.Lobby) ([]byte, error) {
+func NewSignedDataV4(ticketId string, lobby types.Proposal) ([]byte, error) {
 	signedData := core.TypedData{
 		Domain: core.TypedDataDomain{
-			ChainId: math.NewHexOrDecimal256(137),
-			Name:    "EthMatch",
-			Version: "1",
+			ChainId:           math.NewHexOrDecimal256(config.ENV.ChainId.Int64()),
+			Name:              config.ENV.Name,
+			Version:           "1",
+			VerifyingContract: config.ENV.ContractAddress.String(),
 		},
 		PrimaryType: "Proposal",
 		Message: map[string]interface{}{
-			"ticket_id":           ticketId,
-			"id":                  ethcommon.HexToHash(lobby.Id).Hex(),
-			"operators_share":     math.NewHexOrDecimal256(1),
-			"operators_address":   lobby.OperatorAddress.String(),
-			"entry_fee":           math.NewHexOrDecimal256(20),
-			"operators_signature": lobby.OperatorSignature.String(),
+			"ticket_id":         ticketId,
+			"id":                lobby.Id,
+			"operators_share":   math.NewHexOrDecimal256(int64(lobby.OperatorsShare)),
+			"operators_address": lobby.OperatorAddress.String(),
+			"entry_fee":         math.NewHexOrDecimal256(int64(lobby.EntryFee)),
 		},
 		Types: core.Types{
 			"EIP712Domain": []core.Type{
@@ -70,11 +71,15 @@ func NewSignedDataV4(ticketId string, lobby types.Lobby) ([]byte, error) {
 					Name: "chainId",
 					Type: "uint256",
 				},
+				{
+					Name: "verifyingContract",
+					Type: "address",
+				},
 			},
 			"Proposal": []core.Type{
 				{
 					Name: "id",
-					Type: "bytes32",
+					Type: "string",
 				},
 				{
 					Name: "ticket_id",
@@ -92,9 +97,58 @@ func NewSignedDataV4(ticketId string, lobby types.Lobby) ([]byte, error) {
 					Name: "operators_address",
 					Type: "address",
 				},
+			},
+		},
+	}
+	domainSeparator, err := signedData.HashStruct("EIP712Domain", signedData.Domain.Map())
+	if err != nil {
+		Logger.Error("EIP712Domain", zap.Error(err))
+		return nil, err
+	}
+	typedDataHash, err := signedData.HashStruct(signedData.PrimaryType, signedData.Message)
+	if err != nil {
+		Logger.Error("typedDataHash", zap.Error(err))
+		return nil, err
+	}
+	rawData := crypto.Keccak256([]byte(fmt.Sprintf("\x19\x01%s%s", string(domainSeparator), string(typedDataHash))))
+	return rawData, nil
+}
+
+func NewSignedJoinKeyV4(key string) ([]byte, error) {
+	signedData := core.TypedData{
+		Domain: core.TypedDataDomain{
+			ChainId:           math.NewHexOrDecimal256(config.ENV.ChainId.Int64()),
+			Name:              config.ENV.Name,
+			Version:           "1",
+			VerifyingContract: config.ENV.ContractAddress.String(),
+		},
+		PrimaryType: "Key",
+		Message: map[string]interface{}{
+			"id": key,
+		},
+		Types: core.Types{
+			"EIP712Domain": []core.Type{
 				{
-					Name: "operators_signature",
-					Type: "bytes32",
+					Name: "name",
+					Type: "string",
+				},
+				{
+					Name: "version",
+					Type: "string",
+				},
+				{
+					Name: "chainId",
+					Type: "uint256",
+				},
+				{
+					Name: "verifyingContract",
+					Type: "address",
+				},
+			},
+			"Key": []core.Type{
+				{
+					Name: "id",
+					Type: "string",
 				},
 			},
 		},

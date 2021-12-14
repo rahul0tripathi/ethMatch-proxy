@@ -60,10 +60,10 @@ func AddNewTicket(w http.ResponseWriter, r *http.Request) {
 			render.JSON(w, r, common.NewResponse(http.StatusInternalServerError, err.Error(), struct{}{}))
 		} else {
 			render.Status(r, http.StatusOK)
-			render.JSON(w, r, common.NewResponse(http.StatusOK, http.StatusText(http.StatusOK), common.NewResponse(http.StatusOK, "successfully added ticket to the queue", AddTicketResponse{
+			render.JSON(w, r, common.NewResponse(http.StatusOK, http.StatusText(http.StatusOK), AddTicketResponse{
 				Id:       id.String(),
 				WaitTime: matchmaker.CommonMatchMaker.NextRunTime.Sub(time.Now()),
-			})))
+			}))
 		}
 	}
 }

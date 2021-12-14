@@ -19,7 +19,7 @@ type WsHandler struct {
 	flushInterval time.Duration
 }
 type ProposalEvent struct {
-	Propsal types.Lobby `json:"proposal"`
+	Propsal types.Proposal `json:"proposal"`
 }
 
 func WsUpgradeHandler(upgrader websocket.Upgrader, handler *WsHandler, w http.ResponseWriter, r *http.Request) {

@@ -3,6 +3,8 @@ package matchmaker
 import (
 	"context"
 	"github.com/ethMatch/proxy/common"
+	"github.com/ethMatch/proxy/config"
+	"github.com/ethMatch/proxy/eth"
 	"github.com/ethMatch/proxy/storage"
 	"github.com/ethMatch/proxy/types"
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -21,7 +23,7 @@ type BasicMatchMaker struct {
 	MMTime      time.Duration
 	io          sync.RWMutex
 	storage     storage.Storage
-	stream      chan types.Lobby
+	stream      chan types.Proposal
 	config      map[string]interface{}
 	NextRunTime time.Time
 }
@@ -30,15 +32,20 @@ const (
 	proposalExpireTime = time.Hour * 3
 )
 
-func init() {
-	CommonMatchMaker = NewBasicMatchMaker(time.Second*10, 1, 2)
+func InitMM() {
+	d, err := time.ParseDuration(config.ENV.MMTime)
+	if err != nil {
+		zap.Error(err)
+		return
+	}
+	CommonMatchMaker = NewBasicMatchMaker(d, config.ENV.MinPlayers, config.ENV.MaxPlayers)
 }
 func NewBasicMatchMaker(ticker time.Duration, minPlayers int, maxPlayers int) *BasicMatchMaker {
 	return &BasicMatchMaker{
 		MMTime:  ticker,
 		io:      sync.RWMutex{},
 		storage: storage.NewEthMatchStorage(),
-		stream:  make(chan types.Lobby),
+		stream:  make(chan types.Proposal),
 		config: map[string]interface{}{
 			"minPlayers": minPlayers,
 			"maxPlayers": maxPlayers,
@@ -57,7 +64,7 @@ func (mm *BasicMatchMaker) StartMatchMaker() {
 		}()
 	}
 }
-func (mm *BasicMatchMaker) GetLobbyStream() <-chan types.Lobby {
+func (mm *BasicMatchMaker) GetLobbyStream() <-chan types.Proposal {
 	return mm.stream
 }
 
@@ -85,26 +92,23 @@ func (mm *BasicMatchMaker) MMF(timestamp time.Time) error {
 			common.Logger.Debug("new ticket group formed", zap.Any("tmpTicketGroup", tmpTicketGroup))
 			common.Logger.Debug("evaluating expn", zap.Bool("is valid group", len(tmpTicketGroup) >= mm.config["minPlayers"].(int) && len(tmpTicketGroup) <= mm.config["maxPlayers"].(int)))
 			if len(tmpTicketGroup) >= mm.config["minPlayers"].(int) && len(tmpTicketGroup) <= mm.config["maxPlayers"].(int) {
-				tmpRanks := map[ethcommon.Address]uint64{}
+
 				tmpTickets := map[ethcommon.Address]uuid.UUID{}
 				lobbyId := crypto.Keccak256Hash([]byte(time.Now().String()))
 				for _, ticket := range tmpTicketGroup {
-					tmpRanks[ticket.Player] = ticket.Rank
 					tmpTickets[ticket.Player] = ticket.Id
 					lobbyId = crypto.Keccak256Hash(lobbyId.Bytes(), []byte(ticket.Id.String()))
 				}
-				common.Logger.Debug("lobby properties", zap.Any("ranks", tmpRanks), zap.Any("tickets", tmpTickets), zap.Any("lobbyId", lobbyId.String()))
-				mm.stream <- types.Lobby{
-					PlayerTickets:     tmpTickets,
-					PlayerSignatures:  nil,
-					Ranks:             tmpRanks,
-					Pool:              tmpTicketGroup[0].EntryFee * uint64(len(tmpTicketGroup)),
-					OperatorsShare:    tmpTicketGroup[0].OperatorsShare,
-					EntryFee:          tmpTicketGroup[0].EntryFee,
-					Id:                lobbyId.String(),
-					ExpireAt:          time.Now().Add(proposalExpireTime).Unix(),
-					OperatorSignature: ethcommon.Hash{},
-					OperatorAddress:   ethcommon.Address{},
+				common.Logger.Debug("lobby properties", zap.Any("tickets", tmpTickets), zap.Any("lobbyId", lobbyId.String()))
+				mm.stream <- types.Proposal{
+					PlayerTickets:    tmpTickets,
+					PlayerSignatures: nil,
+					Pool:             tmpTicketGroup[0].EntryFee * uint64(len(tmpTicketGroup)),
+					OperatorsShare:   tmpTicketGroup[0].OperatorsShare,
+					EntryFee:         tmpTicketGroup[0].EntryFee,
+					Id:               lobbyId.String(),
+					ExpireAt:         time.Now().Add(proposalExpireTime).Unix(),
+					OperatorAddress:  eth.OperatorPublicAddress,
 				}
 				common.Logger.Debug("published new lobby", zap.String("id", lobbyId.String()))
 			} else {
@@ -125,4 +129,27 @@ func (mm *BasicMatchMaker) AddTicketToQueue(ticket types.Ticket) (ticketId uuid.
 func (mm *BasicMatchMaker) RemoveTicketFromQueue(ticketId uuid.UUID) (removed bool) {
 	mm.storage.RemoveTicket(context.Background(), ticketId)
 	return true
+}
+
+func (mm *BasicMatchMaker) PushLobbyToChain(id string) {
+	sig, err := mm.storage.GetProposalSignatures(context.Background(), id)
+	if err != nil {
+		return
+	}
+	p, err := mm.storage.GetProposal(context.Background(), id)
+	if err != nil {
+		return
+	}
+	p.PlayerSignatures = sig
+	signatureCount := 0
+	for range p.PlayerSignatures {
+		signatureCount += 1
+	}
+	if signatureCount >= mm.config["minPlayers"].(int) {
+		err = eth.SubmitNewLobby(p)
+		if err != nil {
+			common.Logger.Error("failed to push proposal to chain ", zap.Error(err))
+		}
+	}
+
 }

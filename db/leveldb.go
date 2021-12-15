@@ -46,22 +46,10 @@ func SnapshotSession(session *types.GameSession) (err error) {
 	return
 }
 
-func GetPlayerLobbies(id ethcommon.Address) (s []types.GameSession, err error) {
+func GetPlayerLobbies(id ethcommon.Address) (s types.PlayerLobbies, err error) {
 	var val []byte
-	var session types.GameSession
-	var l types.PlayerLobbies
 	val, err = db.Get(PLAYERLOBBIES(id), nil)
-	err = json.Unmarshal(val, &l)
-	fmt.Println(val,err)
-	for i, lobby := range l.Lobbies {
-		if i < 100 {
-			session, err = GetSession(lobby)
-			if err != nil {
-				continue
-			}
-			s = append(s, session)
-		}
-	}
+	err = json.Unmarshal(val, &s)
 	return
 }
 
@@ -69,9 +57,11 @@ func AddPlayerLobby(id string, player ethcommon.Address) (err error) {
 	var val []byte
 	var l types.PlayerLobbies
 	val, err = db.Get(PLAYERLOBBIES(player), nil)
-	if err != nil {
-		return
-	}
+	err = json.Unmarshal(val, &l)
+	//if err != nil {
+	//	return
+	//}
+
 	l.Lobbies = append(l.Lobbies, id)
 	val, err = json.Marshal(l)
 	if err != nil {

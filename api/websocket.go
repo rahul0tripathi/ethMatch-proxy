@@ -2,9 +2,11 @@ package api
 
 import (
 	"fmt"
+	"github.com/ethMatch/proxy/api/controllers"
 	"github.com/ethMatch/proxy/common"
 	"github.com/ethMatch/proxy/types"
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
 	"log"
@@ -28,9 +30,10 @@ func WsUpgradeHandler(upgrader websocket.Upgrader, handler *WsHandler, w http.Re
 		log.Println(err)
 		return
 	}
-	addr := r.Header.Get("address")
+	addr := chi.URLParam(r, controllers.PlayerAddr)
 	if addr != "" && ethcommon.HexToAddress(addr) != (ethcommon.Address{}) {
 		handler.AddPlayer(ethcommon.HexToAddress(addr), conn)
+		handler.Write(ethcommon.HexToAddress(addr), "hello")
 	}
 }
 
@@ -68,7 +71,6 @@ func (h *WsHandler) RemovePlayer(player ethcommon.Address) {
 
 func (h *WsHandler) Write(player ethcommon.Address, data interface{}) (err error) {
 	playerConn := h.GetPlayer(player)
-	fmt.Println(playerConn)
 	if playerConn == nil {
 		return fmt.Errorf("no conn found for user %s", player.String())
 	}

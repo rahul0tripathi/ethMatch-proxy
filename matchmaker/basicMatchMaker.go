@@ -2,6 +2,7 @@ package matchmaker
 
 import (
 	"context"
+	"errors"
 	"github.com/ethMatch/proxy/common"
 	"github.com/ethMatch/proxy/config"
 	"github.com/ethMatch/proxy/eth"
@@ -16,7 +17,8 @@ import (
 )
 
 var (
-	CommonMatchMaker *BasicMatchMaker
+	CommonMatchMaker   *BasicMatchMaker
+	proposalExpireTime time.Duration
 )
 
 type BasicMatchMaker struct {
@@ -28,10 +30,6 @@ type BasicMatchMaker struct {
 	NextRunTime time.Time
 }
 
-const (
-	proposalExpireTime = time.Hour * 3
-)
-
 func InitMM() {
 	d, err := time.ParseDuration(config.ENV.MMTime)
 	if err != nil {
@@ -39,6 +37,10 @@ func InitMM() {
 		return
 	}
 	CommonMatchMaker = NewBasicMatchMaker(d, config.ENV.MinPlayers, config.ENV.MaxPlayers)
+	proposalExpireTime, err = time.ParseDuration(config.ENV.ProposalExpireDuration)
+	if err != nil {
+		zap.Error(err)
+	}
 }
 func NewBasicMatchMaker(ticker time.Duration, minPlayers int, maxPlayers int) *BasicMatchMaker {
 	return &BasicMatchMaker{
@@ -122,6 +124,12 @@ func (mm *BasicMatchMaker) MMF(timestamp time.Time) error {
 
 func (mm *BasicMatchMaker) AddTicketToQueue(ticket types.Ticket) (ticketId uuid.UUID, err error) {
 	ticket.Id = uuid.New()
+	var existing types.Ticket
+	existing, err = mm.storage.GetUserTickets(context.Background(), ticket.Player)
+	if existing.EntryFee != 0 {
+		err = errors.New("The ticket is already in queue")
+		return
+	}
 	err = mm.storage.AddTicket(context.Background(), ticket)
 	return ticket.Id, err
 }

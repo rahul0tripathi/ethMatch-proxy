@@ -126,10 +126,10 @@ func (em EthMatchStorage) GetTicketById(ctx context.Context, ticketId uuid.UUID)
 func (em EthMatchStorage) GetUserTickets(ctx context.Context, user ethcommon.Address) (ticket types.Ticket, err error) {
 	currentTicket := em.redisClient.Get(ctx, genUserKey(user))
 	err = currentTicket.Err()
-	if err != nil {
+	if err != nil || currentTicket.Val() == "" {
 		return
 	}
-	ticket, err = em.GetTicketById(ctx, uuid.MustParse(currentTicket.String()))
+	ticket, err = em.GetTicketById(ctx, uuid.MustParse(currentTicket.Val()))
 	return
 }
 func (em EthMatchStorage) GetUserLobbyProposals(ctx context.Context, user ethcommon.Address) (lobbies []types.Proposal, err error) {

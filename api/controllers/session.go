@@ -20,7 +20,7 @@ type (
 		Id     string            `json:"id"`
 	}
 	SessionResultRequest struct {
-		GameData string      `json:"game_data"`
+		GameData string            `json:"game_data"`
 		Winner   ethcommon.Address `json:"winner"`
 		Id       string            `json:"id"`
 	}
@@ -68,15 +68,28 @@ func SubmitSessionResult(w http.ResponseWriter, r *http.Request) {
 func GetPlayerSessions(w http.ResponseWriter, r *http.Request) {
 	if addr := chi.URLParam(r, PlayerAddr); addr != "" {
 		s, err := db.GetPlayerLobbies(ethcommon.HexToAddress(addr))
+		var _session *types.GameSession
+		var availableSessions []types.GameSession
+		for i, lobby := range s.Lobbies {
+			if i < 100 {
+				_session = session.GetSession(lobby)
+				if err != nil {
+					continue
+				}
+				if len(_session.AllowedPlayers) > 0 {
+					availableSessions = append(availableSessions, *_session)
+				}
+			}
+		}
 		if err != nil {
 			render.Status(r, http.StatusInternalServerError)
 			render.JSON(w, r, common.NewResponse(http.StatusInternalServerError, err.Error(), struct{}{}))
 		} else {
 			render.Status(r, http.StatusOK)
 			render.JSON(w, r, common.NewResponse(http.StatusOK, "fetched gameSessions", struct {
-				sessions []types.GameSession
+				Sessions []types.GameSession `json:"sessions"`
 			}{
-				sessions: s,
+				Sessions: availableSessions,
 			}))
 		}
 	}

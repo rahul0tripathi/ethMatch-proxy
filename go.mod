@@ -8,6 +8,7 @@ require (
 	github.com/deckarep/golang-set v1.7.1 // indirect
 	github.com/ethereum/go-ethereum v1.10.13
 	github.com/go-chi/chi/v5 v5.0.7
+	github.com/go-chi/cors v1.2.0
 	github.com/go-chi/render v1.0.1
 	github.com/go-redis/redis/v8 v8.11.4
 	github.com/go-stack/stack v1.8.1 // indirect

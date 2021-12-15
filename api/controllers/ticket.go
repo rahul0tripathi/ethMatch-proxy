@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"github.com/ethMatch/proxy/common"
+	"github.com/ethMatch/proxy/eth"
 	"github.com/ethMatch/proxy/matchmaker"
 	"github.com/ethMatch/proxy/storage"
 	"github.com/ethMatch/proxy/types"
@@ -43,12 +44,13 @@ func GetUserTickets(w http.ResponseWriter, r *http.Request) {
 func AddNewTicket(w http.ResponseWriter, r *http.Request) {
 	if addr := chi.URLParam(r, PlayerAddr); addr != "" {
 		var body AddTicketRequest
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil && body.OperatorsShare > 0 && body.EntryFee > 0 {
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			render.Status(r, http.StatusOK)
 			render.JSON(w, r, common.NewResponse(http.StatusBadRequest, "invalid payload", struct{}{}))
+			return
 		}
 		id, err := matchmaker.CommonMatchMaker.AddTicketToQueue(types.Ticket{
-			OperatorAddress: ethcommon.Address{},
+			OperatorAddress: eth.OperatorPublicAddress,
 			Player:          ethcommon.HexToAddress(addr),
 			EntryFee:        body.EntryFee,
 			OperatorsShare:  body.OperatorsShare,
@@ -56,7 +58,7 @@ func AddNewTicket(w http.ResponseWriter, r *http.Request) {
 			Rank:            10,
 		})
 		if err != nil {
-			render.Status(r, http.StatusInternalServerError)
+			render.Status(r, http.StatusOK)
 			render.JSON(w, r, common.NewResponse(http.StatusInternalServerError, err.Error(), struct{}{}))
 		} else {
 			render.Status(r, http.StatusOK)

@@ -69,6 +69,13 @@ func newSession(id string) {
 func NewSessionRoutine(sessionChan chan string) {
 	for id := range sessionChan {
 		newSession(id)
+		s := GetSession(id)
+		for _, p := range s.AllowedPlayers {
+			err := db.AddPlayerLobby(id, p)
+			if err != nil {
+				zap.Error(err)
+			}
+		}
 	}
 }
 func NewResultRoutine(result chan string) {
@@ -121,7 +128,12 @@ func GetSession(id string) (lobby *types.GameSession) {
 	newSession(id)
 	io.Lock()
 	defer io.Unlock()
-	return currentSessions[id]
+	lobby = currentSessions[id]
+	if lobby == nil {
+		newSession(id)
+	}
+	lobby = currentSessions[id]
+	return
 }
 func SubmitResults(id string, winner ethcommon.Address, gameData interface{}) (err error) {
 	if session := getSession(id); session != nil {
@@ -134,6 +146,7 @@ func SubmitResults(id string, winner ethcommon.Address, gameData interface{}) (e
 		//	return
 		//}
 		//h := crypto.Keccak256Hash(d)
+		session.Completed = true
 		session.JoinedPlayers[winner] = struct {
 			Sig      []byte
 			IsWinner bool
